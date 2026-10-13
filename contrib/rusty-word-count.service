@@ -1,0 +1,10 @@
+[Unit]
+Description=Typing speed (WPM) daemon
+
+[Service]
+ExecStart=%h/.cargo/bin/rusty-word-count daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
