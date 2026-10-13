@@ -41,6 +41,13 @@ const SHORTCUT_MODIFIERS: [u16; 5] = [
     KEY_RIGHTMETA,
 ];
 
+/// Whether a device is a keyboard, judged by the lowest word of its evdev key bitmap, in
+/// which bit `n` stands for key code `n`.
+pub fn is_keyboard(key_bitmap: u64) -> bool {
+    const REQUIRED: u64 = 1 << KEY_Q | 1 << KEY_ENTER | 1 << KEY_A;
+    key_bitmap & REQUIRED == REQUIRED
+}
+
 /// Follows one keyboard's modifier state, so that shortcuts are not counted as typing.
 #[derive(Debug, Default)]
 pub struct Decoder {
@@ -117,6 +124,14 @@ mod tests {
 
     fn decode(decoder: &mut Decoder, events: &[[u8; EVENT_SIZE]]) -> Vec<Key> {
         decoder.keys(events.as_flattened()).collect()
+    }
+
+    #[test]
+    fn keyboards_are_told_apart_by_their_keys() {
+        assert!(is_keyboard(0xffff_ffff_ffff_fffe));
+        // A media-key device that has Esc and Enter but no letters.
+        assert!(!is_keyboard(0x1000_0002));
+        assert!(!is_keyboard(0));
     }
 
     #[test]

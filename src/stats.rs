@@ -63,6 +63,12 @@ impl Stats {
         self.window.push_back((now, delta));
     }
 
+    /// Whether the rolling window was empty after the last `record` or `snapshot`. If so,
+    /// the live figure stays at 0 until the next key.
+    pub fn is_idle(&self) -> bool {
+        self.window.is_empty()
+    }
+
     pub fn snapshot(&mut self, now: Instant) -> Snapshot {
         while let Some(&(at, _)) = self.window.front()
             && now.duration_since(at) > WINDOW
@@ -152,9 +158,11 @@ mod tests {
         stats.snapshot(t0 + ms(10_000));
 
         assert_eq!(stats.snapshot(t0 + ms(15_000)).wpm, 30);
+        assert!(!stats.is_idle());
         let snapshot = stats.snapshot(t0 + ms(20_000));
         assert_eq!(snapshot.wpm, 0);
         assert_eq!(snapshot.peak, 60);
+        assert!(stats.is_idle());
     }
 
     #[test]

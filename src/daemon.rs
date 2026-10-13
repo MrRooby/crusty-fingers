@@ -1,0 +1,45 @@
+//! The event loop: keystrokes in, score out.
+
+use std::io;
+use std::time::{Duration, Instant};
+
+use crate::devices::Keyboards;
+use crate::stats::{Snapshot, Stats};
+use crate::sys;
+
+/// How often the score is refreshed while there is recent typing.
+const TICK: Duration = Duration::from_secs(1);
+
+pub fn run() -> io::Result<()> {
+    let mut keyboards = Keyboards::open()?;
+    if keyboards.is_empty() {
+        eprintln!("rusty-word-count: no readable keyboard; is this user in the `input` group?");
+    }
+    let mut stats = Stats::default();
+    let mut shown = Snapshot::default();
+    // When the score is next due a refresh. `None` while idle, and the loop then sleeps
+    // until a key is pressed.
+    let mut next_tick: Option<Instant> = None;
+
+    loop {
+        let fds: Vec<_> = keyboards.fds().collect();
+        let timeout = next_tick.map(|at| at.saturating_duration_since(Instant::now()));
+        sys::wait(&fds, timeout)?;
+
+        let now = Instant::now();
+        keyboards.read(|key| stats.record(key, now))?;
+
+        match next_tick {
+            None if !stats.is_idle() => next_tick = Some(now + TICK),
+            Some(at) if now >= at => {
+                let snapshot = stats.snapshot(now);
+                if snapshot != shown {
+                    println!("{snapshot:?}");
+                    shown = snapshot;
+                }
+                next_tick = (!stats.is_idle()).then_some(now + TICK);
+            }
+            _ => {}
+        }
+    }
+}

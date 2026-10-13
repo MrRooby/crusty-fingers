@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 description = "Lightweight daemon that measures typing speed (WPM) from keyboard activity"
 
+[dependencies]
+libc = "0.2"
+
 [profile.release]
 opt-level = "s"
 lto = true
