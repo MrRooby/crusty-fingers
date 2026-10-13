@@ -55,7 +55,8 @@ Modifier state is tracked per keyboard.
 
 | Constant | Value | Meaning |
 |---|---|---|
-| `WINDOW` | 10 s | how far back the live figure looks |
+| `WINDOW` | 10 s | how far back from the newest key the live figure looks |
+| `PAUSE` | 2 s | how long without a key until the live figure drops to 0 |
 | `MIN_SPAN` | 3 s | the shortest time any rate is measured over |
 | `PEAK_MIN_SPAN` | 8 s | how much time the live figure must cover to count as a peak |
 | `IDLE_GAP` | 5 s | the longest pause that still counts as typing time |
@@ -69,15 +70,28 @@ rate(characters, span) = characters / 5 / (max(span, 3 s) in minutes)
 
 ### Live: `wpm`
 
-The daemon keeps every counted key press of the last 10 seconds, each as +1 or -1.
+The live figure is the speed of the typing in progress. The daemon keeps the counted key
+presses of the current burst, each as +1 or -1, going back at most 10 seconds from the
+newest one. This is the window.
 
 ```
-wpm = rate(sum of the window, but at least 0; age of the oldest key in the window)
+span = time from the oldest key in the window to the newest
+wpm  = rate(sum of the window without its oldest key, but at least 0; span)
 ```
 
-Dividing by the age of the oldest key, rather than always by 10 seconds, makes the figure
-correct from about three seconds into a burst instead of ramping up over ten. The 3 second
-minimum keeps the first few keys from reading as an absurd speed.
+Three details matter here:
+
+- **The window ends at the newest key, not at the present moment.** Between two keys the
+  figure therefore holds steady instead of sagging while you think about the next word.
+- **The oldest key is left out of the sum.** It marks where the measured time starts: 51
+  keys at five per second cover exactly 10 seconds and are 50 characters' worth of typing.
+- **The span is the real one, not always 10 seconds.** That makes the figure correct from
+  about three seconds into a burst instead of ramping up over ten. The 3 second minimum
+  keeps the first few keys from reading as an absurd speed.
+
+When more than 2 seconds pass without a key, the burst is over: the window is emptied and
+the figure is 0. It does not slide down. The next key starts a new window, so what you
+typed before the pause has no effect on the new figure.
 
 This is what the live figure does when you type steadily at 60 WPM (five keys per second)
 for 15 seconds and then stop:
@@ -85,17 +99,20 @@ for 15 seconds and then stop:
 ```mermaid
 xychart-beta
     title "Live WPM during and after 15 seconds of typing at 60 WPM"
-    x-axis "seconds since the first key" 0 --> 26
+    x-axis "seconds since the first key" 0 --> 20
     y-axis "live WPM" 0 --> 70
-    line [0, 20, 40, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 54, 48, 42, 36, 30, 24, 18, 12, 6, 0, 0]
+    line [0, 20, 40, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 0, 0, 0]
 ```
 
 | Seconds | What happens |
 |---|---|
 | 0 to 3 | the rate is measured over the 3 second minimum, so it climbs: 20, 40, 60 |
 | 3 to 15 | the figure is exact |
-| 15 to 25 | typing has stopped; keys leave the window one second's worth at a time |
-| 25 | the window is empty, the figure is 0 and the daemon goes back to sleep |
+| 15 to 17 | typing has stopped; the figure holds |
+| after 17 | more than 2 seconds without a key: the figure is 0 and the daemon goes back to sleep |
+
+The daemon looks at the clock once a second while typing is in progress, so clients see the
+drop to 0 between 2 and 3 seconds after the last key.
 
 ### Session: `chars`, `active_secs`, `average`
 
@@ -110,16 +127,17 @@ away, and are left out.
 average = rate(chars, active time)
 ```
 
-Because active time is made of the gaps between keys, a burst of N keys has N - 1 gaps.
-In the example above, 75 keys cover 14.8 seconds, so the average reads 61 while the live
-figure reads 60.
+Unlike the live figure, the average counts every character, including the first key of
+each burst, which has no gap before it. In the example above, 76 keys cover 15 seconds, so
+the average reads 61 while the live figure reads 60. Over a longer session the difference
+disappears.
 
 ### Session: `peak`
 
 `peak` is the highest live figure seen, with one condition: it is only updated when the
-oldest key in the window is at least 8 seconds old. The live figure then covers at least
-8 seconds, so a two second sprint cannot set a record. In the example, the peak becomes
-60 at second 8.
+window spans at least 8 seconds. Since a pause of more than 2 seconds empties the window,
+that means at least 8 seconds of typing without such a pause, so a short sprint cannot set
+a record. In the example, the peak becomes 60 at second 8.
 
 Nothing is written to disk. All figures start again from zero when the daemon restarts.
 

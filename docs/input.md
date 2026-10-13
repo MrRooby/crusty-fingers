@@ -125,7 +125,7 @@ flowchart LR
 - The key code is looked at once, inside `Decoder`, to decide between "character",
   "backspace" and "ignore". It is not passed on.
 - The only per-key state is whether each shortcut modifier is currently held.
-- `Stats` keeps the time of each counted key press for 10 seconds, with no record of
+- `Stats` keeps the time of each counted key press for at most 10 seconds, with no record of
   which key it was.
 - Clients receive five numbers: `wpm`, `average`, `peak`, `chars` and `active_secs`.
 - Nothing is written to disk and nothing is logged about keys.

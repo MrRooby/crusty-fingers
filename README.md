@@ -53,7 +53,7 @@ A word is five characters, the usual convention.
 
 | Field | Meaning |
 |---|---|
-| `wpm` | live speed, over the last 10 seconds |
+| `wpm` | live speed of the typing in progress, measured over up to 10 seconds; 0 once you pause for 2 seconds |
 | `average` | speed over all the time you spent typing since the daemon started |
 | `peak` | the highest live speed that was sustained for at least 8 seconds |
 | `chars` | characters typed since the daemon started, net of backspaces |

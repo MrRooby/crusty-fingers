@@ -53,15 +53,21 @@ fn serves_the_score_over_the_socket() {
     let mut watcher = BufReader::new(request(&socket, "watch")).lines();
     assert_eq!(watcher.next().unwrap().unwrap(), ZERO);
 
-    // Ten characters are two words. A burst this short is measured over three seconds.
-    press(&mut keyboard, 10);
-    let typed = r#"{"wpm":40,"average":40,"peak":0,"chars":10,"active_secs":0}"#;
+    // Eleven keys are ten characters after the first, which is two words. A burst this
+    // short is measured over three seconds.
+    press(&mut keyboard, 11);
+    let typed = r#"{"wpm":40,"average":44,"peak":0,"chars":11,"active_secs":0}"#;
     assert_eq!(watcher.next().unwrap().unwrap(), typed);
     assert_eq!(reply(&socket, "get json"), format!("{typed}\n"));
     assert_eq!(
         reply(&socket, "get waybar"),
-        "{\"text\":\"40\",\"tooltip\":\"average 40 · peak 0\",\"class\":\"typing\"}\n"
+        "{\"text\":\"40\",\"tooltip\":\"average 44 · peak 0\",\"class\":\"typing\"}\n"
     );
+
+    // Two seconds after the last key the live figure drops to zero.
+    let paused = r#"{"wpm":0,"average":44,"peak":0,"chars":11,"active_secs":0}"#;
+    assert_eq!(watcher.next().unwrap().unwrap(), paused);
+    assert!(reply(&socket, "get waybar").contains(r#""class":"idle""#));
 }
 
 #[test]

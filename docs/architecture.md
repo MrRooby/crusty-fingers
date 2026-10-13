@@ -91,11 +91,11 @@ flowchart TD
     snap["Stats::snapshot"]
     serve["Server::serve<br/>accept new clients, answer their requests"]
     armed{"is a tick<br/>scheduled?"}
-    typing{"any typing in<br/>the window?"}
+    typing{"is typing<br/>in progress?"}
     due{"is the tick<br/>due?"}
     changed{"has the snapshot changed<br/>since the last publish?"}
     publish["Server::publish<br/>send the snapshot to watchers"]
-    idle{"is the window<br/>empty now?"}
+    idle{"has typing<br/>paused?"}
     schedule["schedule a tick<br/>one second from now"]
     clear["clear the tick"]
 
@@ -118,8 +118,8 @@ Two properties follow from this shape.
 
 **Idle costs nothing.** With no tick scheduled, `poll` is called without a timeout, so the
 process is not woken until a key is pressed or a client connects. The tick only runs
-while there are keystrokes inside the 10 second window, which is also the only time the
-live figure can change.
+while typing is in progress, which ends once more than 2 seconds pass without a key. That
+is also the only time the score can change.
 
 **Watchers get at most one line per second.** Keystrokes are recorded as they arrive, but
 the score is only published on the tick, and only if it differs from what was published
@@ -161,7 +161,7 @@ pass a directory under `target/` in which FIFOs stand in for device nodes.
 
 | Where | What it covers |
 |---|---|
-| `src/stats.rs` | the live figure, decay, backspace, average and peak |
+| `src/stats.rs` | the live figure, pauses, backspace, average and peak |
 | `src/keys.rs` | which keys count, modifiers, repeats, non-key events |
 | `src/protocol.rs` | request parsing and both renderings |
 | `tests/devices.rs` | discovery, filtering of non-keyboards, hot-plug |

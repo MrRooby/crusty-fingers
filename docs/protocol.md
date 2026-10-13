@@ -66,7 +66,7 @@ sequenceDiagram
     loop once a second while the score changes
         D-->>C: score line
     end
-    Note over D: 10 seconds after the last key the live figure is 0
+    Note over D: 2 to 3 seconds after the last key the live figure drops to 0
     D-->>C: score line, final
     Note over C,D: silence until the next key
     C->>D: disconnect
@@ -87,7 +87,7 @@ stops.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `wpm` | integer | live speed over the last 10 seconds, in words per minute |
+| `wpm` | integer | live speed of the typing in progress, in words per minute; 0 during a pause |
 | `average` | integer | speed over all typing time since the daemon started |
 | `peak` | integer | highest live speed sustained for at least 8 seconds |
 | `chars` | integer | characters typed since the daemon started, net of backspaces |
